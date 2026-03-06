@@ -32,8 +32,8 @@ sepcode		EQU	$D0	; opcode for SEP instruction
 ; ===============================================
 IOX			EQU	2	; inp/out port for IOX instruction
 IOY			EQU	1	; inp/out port for IOY instruction
-DOUT		EQU 4   ; data out
-COUT		EQU 2	; Control Out
+DOUT		EQU 2   ; data out
+COUT		EQU 1	; Control Out
 ; ===============================================
 ;  Register Ussage
 REG_MAINP		EQU 0
@@ -55,64 +55,76 @@ CH_MASK_BM		EQU		%00001111
 START	ORG	$8000
 	LOAD REG_L0, printch
 
-	LOAD REG_DATA_INP, inpbuff
 	LOAD REG_DATA_OUT, outbuff
 	ldi $55
 	str REG_DATA_OUT
 
 loop1:
-	inc REG_DATA_OUT	; Control byte
-	ldi %11111111
+	LOAD REG_DATA_INP, inpbuff
+	LOAD REG_DATA_OUT, outbuff
+	sex  REG_DATA_OUT
+loop1b:	
+	inp DOUT
+	; str REG_DATA_OUT
+	;out DOUT
+	;dec REG_DATA_OUT
+	out COUT
+	dec REG_DATA_OUT
+	br loop1b
+	
+	
+	
+	ldi  $55
 	str REG_DATA_OUT
 	sex	REG_DATA_OUT
-	out IOX
-	
-	dec REG_DATA_OUT 	;back to control byte
-	dec REG_DATA_OUT 	;back to data byte
-	out IOX				;write data to output
+loop1a:	
+	out COUT
 	dec REG_DATA_OUT
+	ldn REG_DATA_OUT
 	adi $01
-	str REG_DATA_OUT	;save byte to be sent at next iteration
-	
-	inc REG_DATA_OUT	;
-	ldi NOT OUT_RDY_BM
 	str REG_DATA_OUT
-	out IOY
-wait_ack:
-	nop
-	inp IOY
-	ani OUT_ACK_BM
-	bnz wait_ack
-	nop
-	
-	
-	
-	
-	out IOY
+	br loop1a
+
+
+	sex	REG_DATA_INP
+	inp COUT
+	str REG_DATA_OUT
+	sex	REG_DATA_OUT
+	out COUT
 	dec REG_DATA_OUT
-	; sex REG_DATA_INP
-	; inp IOX
-	adi $01
+	br loop1a
+	
+	
+	
+	inc REG_DATA_OUT	; +1 Control byte
+	ldi %11111111		; +1 OUT_RDY_BM
+	str REG_DATA_OUT	; +1
+	sex	REG_DATA_OUT
+	out COUT			; +2
+	
+	dec REG_DATA_OUT 	; +1 back to control byte
+	dec REG_DATA_OUT 	; +0 back to data byte
+	out DOUT			; +1 write data to output
+	dec REG_DATA_OUT	; +0
+	ldn REG_DATA_OUT	; +0
+	adi $01				; +0
+	str REG_DATA_OUT	; +0 save byte to be sent at next iteration
+	
+	inc REG_DATA_OUT	; +1
+	;ldi NOT OUT_RDY_BM
+	ldi $00				; +1
+	str REG_DATA_OUT	; +1
+	out COUT			; +2
+	dec REG_DATA_OUT 	; +1 back to control byte
+wait_ack:
+	nop		
+	inp COUT			; +1			
+	ani OUT_ACK_BM
+	bnz wait_ack		; +1
+	nop
 	br loop1
 	
 obsolete:	
-	str REG_DATA_OUT
-	inc REG_DATA_OUT
-	ldi $AA
-	str REG_DATA_OUT
-	dec	REG_DATA_OUT
-
-	sep REG_L0
-
-	LOAD REG_DATA_OUT, outbuff
-	ldi $11
-	str REG_DATA_OUT
-	inc REG_DATA_OUT
-	ldi $22
-	str REG_DATA_OUT
-	dec REG_DATA_OUT
-	sep REG_L0
-	br 	loop1
 
 wait1:
 	req
